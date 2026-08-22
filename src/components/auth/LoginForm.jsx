@@ -69,7 +69,7 @@ function LoginForm() {
   };
 
   return (
-    <div className="w-full max-w-[400px]">
+    <div className="w-full max-w-100">
       {/* Brand Header */}
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold tracking-tight text-black mb-2">
@@ -131,16 +131,6 @@ function LoginForm() {
               >
                 Password
               </label>
-
-              <button
-                type="button"
-                onClick={() => {
-                  // We'll implement this next
-                }}
-                className="text-xs font-semibold text-[#585f6c] hover:text-black transition-colors"
-              >
-                Forgot password?
-              </button>
             </div>
 
             {/* Password input + show button */}
