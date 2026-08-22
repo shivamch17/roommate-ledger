@@ -27,6 +27,7 @@ function Dashboard() {
   const [settlements, setSettlements] = useState([]);
   const [profiles, setProfiles] = useState([]);
   const [marking, setMarking] = useState(false);
+  const [expenseStatusFilter, setExpenseStatusFilter] = useState("ALL");
 
   async function loadData() {
     setLoading(true);
@@ -333,6 +334,11 @@ function Dashboard() {
     .slice(0, 2)
     .toUpperCase();
 
+  const filteredExpenses =
+    expenseStatusFilter === "ALL"
+      ? expenses
+      : expenses.filter((expense) => expense.status === expenseStatusFilter);
+
   return (
     <div className="min-h-screen bg-[#fcf8fa] text-[#1b1b1d]">
       {/* =====================================================
@@ -356,28 +362,6 @@ function Dashboard() {
           {/* Header Actions */}
 
           <div className="flex items-center gap-5">
-            {/* Notifications */}
-
-            <button
-              type="button"
-              className="relative rounded-lg p-2 text-[#45444a] transition hover:bg-[#f0edef]"
-              aria-label="Notifications"
-            >
-              <Bell size={22} strokeWidth={2} />
-
-              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[#d97706]" />
-            </button>
-
-            {/* Profile */}
-
-            <button
-              type="button"
-              className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border border-[#c9c6c9] bg-[#e9e5e7] text-sm font-semibold"
-              title={displayName}
-            >
-              {initials}
-            </button>
-
             {/* Logout */}
 
             <button
@@ -526,16 +510,27 @@ function Dashboard() {
         <section className="mt-7 overflow-hidden rounded-xl border border-[#ccc9cc] bg-white">
           {/* Section Header */}
 
-          <div className="flex items-center justify-between border-b border-[#d5d2d5] px-7 py-5">
+          <div className="flex items-center justify-between gap-4 border-b border-[#d5d2d5] px-7 py-5">
             <h2 className="text-[23px] font-bold">Expenses</h2>
 
-            <button
-              type="button"
-              className="rounded-md p-2 text-[#4e4c51] transition hover:bg-[#f3f1f2]"
-              title="Filter expenses"
-            >
-              <SlidersHorizontal size={22} />
-            </button>
+            <div className="flex items-center gap-3">
+              <label className="text-[12px] font-semibold uppercase tracking-wide text-[#58565c]">
+                Status
+              </label>
+
+              <select
+                value={expenseStatusFilter}
+                onChange={(event) => setExpenseStatusFilter(event.target.value)}
+                className="rounded-md border border-[#c9c6c9] bg-white px-3 py-2 text-[14px] font-medium text-[#2c2b2f] outline-none transition focus:border-black"
+                aria-label="Filter expenses by status"
+              >
+                <option value="ALL">All</option>
+                <option value="PENDING">Pending</option>
+                <option value="APPROVED">Approved</option>
+                <option value="CLEARED">Cleared</option>
+                <option value="DENIED">Denied</option>
+              </select>
+            </div>
           </div>
 
           {/* Table */}
@@ -592,8 +587,16 @@ function Dashboard() {
                       </div>
                     </td>
                   </tr>
+                ) : filteredExpenses.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-12 text-center">
+                      <span className="text-[15px] text-[#68656a]">
+                        No expenses found for this status.
+                      </span>
+                    </td>
+                  </tr>
                 ) : (
-                  expenses.map((expense) => (
+                  filteredExpenses.map((expense) => (
                     <tr
                       key={expense.id}
                       className="border-b border-[#d9d6d9] last:border-b-0 hover:bg-[#fdfbfc]"
@@ -664,50 +667,6 @@ function Dashboard() {
             onConfirmSettlement={handleConfirmSettlement}
           />
         </section>
-
-        {/* ===================================================
-            PAGINATION
-        ==================================================== */}
-
-        <div className="mt-5 flex items-center justify-between">
-          <p className="text-sm text-[#68656a]">
-            {loading
-              ? "Loading…"
-              : `Showing 1–${Math.min(expenses.length, 10)} of ${expenses.length} expenses`}
-          </p>
-
-          <div className="flex items-center gap-1">
-            {/* Previous */}
-
-            <button
-              type="button"
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage((page) => page - 1)}
-              className="rounded-md p-2 text-[#55535a] hover:bg-[#ebe8e9] disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <ChevronLeft size={18} />
-            </button>
-
-            {/* Current Page */}
-
-            <button
-              type="button"
-              className="h-8 min-w-8 rounded-md bg-black px-2 text-sm font-medium text-white"
-            >
-              {currentPage}
-            </button>
-
-            {/* Next */}
-
-            <button
-              type="button"
-              onClick={() => setCurrentPage((page) => page + 1)}
-              className="rounded-md p-2 text-[#55535a] hover:bg-[#ebe8e9]"
-            >
-              <ChevronRight size={18} />
-            </button>
-          </div>
-        </div>
 
         {/* ===================================================
             NEW ENTRY MODAL

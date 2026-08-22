@@ -10,6 +10,23 @@ function NewEntryModal({ isOpen, onClose, onSuccess }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const handleNonNegativeCurrencyInput = (value, setter) => {
+    if (value === "") {
+      setter("");
+      return;
+    }
+
+    if (value.startsWith("-")) {
+      return;
+    }
+
+    if (!/^\d*\.?\d*$/.test(value)) {
+      return;
+    }
+
+    setter(value);
+  };
+
   if (!isOpen) {
     return null;
   }
@@ -18,7 +35,9 @@ function NewEntryModal({ isOpen, onClose, onSuccess }) {
   const roommateOwed = Number(owedAmount);
 
   const yourShare =
-    totalAmount > 0 && roommateOwed >= 0 ? totalAmount - roommateOwed : 0;
+    totalAmount > 0 && roommateOwed >= 0
+      ? Math.max(0, totalAmount - roommateOwed)
+      : 0;
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -29,7 +48,7 @@ function NewEntryModal({ isOpen, onClose, onSuccess }) {
     // Validation
     // -----------------------------
 
-    if (!amount || totalAmount <= 0) {
+    if (!amount || totalAmount <= 0 || totalAmount < 0) {
       setError("Please enter a valid total amount.");
       return;
     }
@@ -39,7 +58,7 @@ function NewEntryModal({ isOpen, onClose, onSuccess }) {
       return;
     }
 
-    if (!owedAmount || roommateOwed <= 0) {
+    if (!owedAmount || roommateOwed <= 0 || roommateOwed < 0) {
       setError("Please enter a valid amount owed by your roommate.");
       return;
     }
@@ -84,7 +103,9 @@ function NewEntryModal({ isOpen, onClose, onSuccess }) {
         status: "pending_approval",
       };
 
-      const { error: insertErr } = await supabase.from("expenses").insert([payload]);
+      const { error: insertErr } = await supabase
+        .from("expenses")
+        .insert([payload]);
       if (insertErr) throw insertErr;
 
       // Reset form
@@ -172,7 +193,9 @@ function NewEntryModal({ isOpen, onClose, onSuccess }) {
                 min="0"
                 step="0.01"
                 value={amount}
-                onChange={(event) => setAmount(event.target.value)}
+                onChange={(event) =>
+                  handleNonNegativeCurrencyInput(event.target.value, setAmount)
+                }
                 placeholder="0.00"
                 disabled={loading}
                 autoFocus
@@ -222,7 +245,12 @@ function NewEntryModal({ isOpen, onClose, onSuccess }) {
                 min="0"
                 step="0.01"
                 value={owedAmount}
-                onChange={(event) => setOwedAmount(event.target.value)}
+                onChange={(event) =>
+                  handleNonNegativeCurrencyInput(
+                    event.target.value,
+                    setOwedAmount,
+                  )
+                }
                 placeholder="0.00"
                 disabled={loading}
                 className="w-full rounded-md border border-[#c9c6c9] bg-white py-3 pl-9 pr-4 text-[16px] outline-none transition placeholder:text-[#aaa7ab] focus:border-black disabled:bg-[#f5f3f4]"
