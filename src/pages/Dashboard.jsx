@@ -14,14 +14,20 @@ import {
 import { supabase } from "../lib/supabase";
 import { profileAtom } from "../atoms/authAtom";
 
+import NewEntryModal from "../components/expense/NewEntryModal";
+
 function Dashboard() {
   const profile = useAtomValue(profileAtom);
 
   const [activeTab, setActiveTab] = useState("monthly");
   const [currentPage, setCurrentPage] = useState(1);
+  const [isNewEntryOpen, setIsNewEntryOpen] = useState(false);
 
-  // Temporary data.
-  // We will replace this with Supabase data next.
+  // =========================================================
+  // TEMPORARY EXPENSE DATA
+  // We will replace this with Supabase data later.
+  // =========================================================
+
   const expenses = [
     {
       id: 1,
@@ -52,6 +58,10 @@ function Dashboard() {
     },
   ];
 
+  // =========================================================
+  // TEMPORARY MONTHLY SETTLEMENT DATA
+  // =========================================================
+
   const monthlySettlements = [
     {
       id: 1,
@@ -70,6 +80,10 @@ function Dashboard() {
       status: "CLEARED",
     },
   ];
+
+  // =========================================================
+  // TEMPORARY CLEARANCE HISTORY DATA
+  // =========================================================
 
   const clearanceHistory = [
     {
@@ -90,6 +104,10 @@ function Dashboard() {
     },
   ];
 
+  // =========================================================
+  // LOGOUT
+  // =========================================================
+
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
 
@@ -98,17 +116,33 @@ function Dashboard() {
     }
   };
 
+  // =========================================================
+  // NEW ENTRY
+  // =========================================================
+
   const handleNewEntry = () => {
-    console.log("Open new expense modal");
+    setIsNewEntryOpen(true);
   };
+
+  // =========================================================
+  // MARK CLEAR
+  // =========================================================
 
   const handleMarkClear = () => {
     console.log("Mark current balance as clear");
   };
 
+  // =========================================================
+  // APPROVE EXPENSE
+  // =========================================================
+
   const handleApprove = (expenseId) => {
     console.log("Approve expense:", expenseId);
   };
+
+  // =========================================================
+  // PROFILE DATA
+  // =========================================================
 
   const displayName = profile?.name || "User";
 
@@ -124,9 +158,11 @@ function Dashboard() {
       {/* =====================================================
           HEADER
       ====================================================== */}
+
       <header className="border-b border-[#d5d1d4] bg-[#fcf8fa]">
         <div className="mx-auto flex max-w-[1250px] items-center justify-between px-6 py-4">
           {/* Logo / Title */}
+
           <div>
             <h1 className="text-[24px] font-bold tracking-tight">
               Roommate Ledger
@@ -138,7 +174,10 @@ function Dashboard() {
           </div>
 
           {/* Header Actions */}
+
           <div className="flex items-center gap-5">
+            {/* Notifications */}
+
             <button
               type="button"
               className="relative rounded-lg p-2 text-[#45444a] transition hover:bg-[#f0edef]"
@@ -146,11 +185,11 @@ function Dashboard() {
             >
               <Bell size={22} strokeWidth={2} />
 
-              {/* Notification dot */}
               <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[#d97706]" />
             </button>
 
             {/* Profile */}
+
             <button
               type="button"
               className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border border-[#c9c6c9] bg-[#e9e5e7] text-sm font-semibold"
@@ -160,6 +199,7 @@ function Dashboard() {
             </button>
 
             {/* Logout */}
+
             <button
               type="button"
               onClick={handleLogout}
@@ -176,12 +216,15 @@ function Dashboard() {
       {/* =====================================================
           MAIN
       ====================================================== */}
+
       <main className="mx-auto max-w-[1250px] px-6 py-7">
         {/* ===================================================
             TOP SECTION
         ==================================================== */}
+
         <section className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_400px]">
           {/* Current Balance */}
+
           <div className="rounded-xl border border-[#ccc9cc] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
             <div className="mb-5 flex items-start justify-between">
               <p className="text-[16px] font-medium uppercase tracking-wide text-[#58565c]">
@@ -205,7 +248,10 @@ function Dashboard() {
           </div>
 
           {/* Actions */}
+
           <div className="rounded-xl border border-[#ccc9cc] bg-white p-7">
+            {/* New Entry */}
+
             <button
               type="button"
               onClick={handleNewEntry}
@@ -214,6 +260,8 @@ function Dashboard() {
               <Plus size={21} />
               New Entry
             </button>
+
+            {/* Mark Clear */}
 
             <button
               type="button"
@@ -229,8 +277,10 @@ function Dashboard() {
         {/* ===================================================
             EXPENSES
         ==================================================== */}
+
         <section className="mt-7 overflow-hidden rounded-xl border border-[#ccc9cc] bg-white">
           {/* Section Header */}
+
           <div className="flex items-center justify-between border-b border-[#d5d2d5] px-7 py-5">
             <h2 className="text-[23px] font-bold">Expenses</h2>
 
@@ -244,16 +294,23 @@ function Dashboard() {
           </div>
 
           {/* Table */}
+
           <div className="overflow-x-auto">
             <table className="w-full min-w-[850px] border-collapse">
               <thead>
                 <tr className="border-b border-[#d5d2d5] bg-[#faf8f9]">
                   <TableHeader>Date</TableHeader>
+
                   <TableHeader>Paid By</TableHeader>
+
                   <TableHeader>Reason</TableHeader>
+
                   <TableHeader>Total</TableHeader>
+
                   <TableHeader>Owed</TableHeader>
+
                   <TableHeader>Status</TableHeader>
+
                   <TableHeader>Action</TableHeader>
                 </tr>
               </thead>
@@ -302,6 +359,7 @@ function Dashboard() {
           </div>
 
           {/* View All */}
+
           <button
             type="button"
             className="flex w-full items-center justify-center gap-2 border-t border-[#d5d2d5] py-3.5 text-[14px] font-semibold transition hover:bg-[#f8f6f7]"
@@ -314,14 +372,18 @@ function Dashboard() {
         {/* ===================================================
             SETTLEMENT HISTORY
         ==================================================== */}
+
         <section className="mt-7 overflow-hidden rounded-xl border border-[#ccc9cc] bg-white">
           {/* Tabs */}
+
           <div className="flex border-b border-[#d5d2d5] px-7">
+            {/* Monthly Settlements */}
+
             <button
               type="button"
               onClick={() => setActiveTab("monthly")}
               className={`
-                relative px-0 py-5 mr-8 text-[16px] font-semibold
+                relative mr-8 px-0 py-5 text-[16px] font-semibold
                 ${activeTab === "monthly" ? "text-[#1b1b1d]" : "text-[#68656a]"}
               `}
             >
@@ -330,6 +392,8 @@ function Dashboard() {
                 <span className="absolute bottom-[-1px] left-0 right-0 h-[2px] bg-black" />
               )}
             </button>
+
+            {/* Clearance History */}
 
             <button
               type="button"
@@ -351,11 +415,13 @@ function Dashboard() {
           </div>
 
           {/* Monthly Settlements */}
+
           {activeTab === "monthly" && (
             <SettlementTable data={monthlySettlements} type="monthly" />
           )}
 
           {/* Clearance History */}
+
           {activeTab === "clearance" && (
             <SettlementTable data={clearanceHistory} type="clearance" />
           )}
@@ -364,10 +430,13 @@ function Dashboard() {
         {/* ===================================================
             PAGINATION
         ==================================================== */}
+
         <div className="mt-5 flex items-center justify-between">
           <p className="text-sm text-[#68656a]">Showing 1–3 of 3 expenses</p>
 
           <div className="flex items-center gap-1">
+            {/* Previous */}
+
             <button
               type="button"
               disabled={currentPage === 1}
@@ -377,12 +446,16 @@ function Dashboard() {
               <ChevronLeft size={18} />
             </button>
 
+            {/* Current Page */}
+
             <button
               type="button"
               className="h-8 min-w-8 rounded-md bg-black px-2 text-sm font-medium text-white"
             >
               {currentPage}
             </button>
+
+            {/* Next */}
 
             <button
               type="button"
@@ -393,6 +466,18 @@ function Dashboard() {
             </button>
           </div>
         </div>
+
+        {/* ===================================================
+            NEW ENTRY MODAL
+        ==================================================== */}
+
+        <NewEntryModal
+          isOpen={isNewEntryOpen}
+          onClose={() => setIsNewEntryOpen(false)}
+          onSuccess={() => {
+            setIsNewEntryOpen(false);
+          }}
+        />
       </main>
     </div>
   );
