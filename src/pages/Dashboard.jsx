@@ -36,7 +36,7 @@ function Dashboard() {
       const { data: expensesData, error: expErr } = await supabase
         .from("expenses")
         .select(
-          `id, created_at, paid_by, owed_by, description, total_amount, owed_amount, status, approved_at`
+          `id, created_at, paid_by, owed_by, description, total_amount, owed_amount, status, approved_at`,
         )
         .order("created_at", { ascending: false })
         .limit(50);
@@ -46,7 +46,9 @@ function Dashboard() {
       // Settlements (all statuses)
       const { data: settlementsData, error: settleErr } = await supabase
         .from("settlements")
-        .select(`id, marked_paid_at, paid_by, paid_to, amount, status, confirmed_by, confirmed_at, created_at`)
+        .select(
+          `id, marked_paid_at, paid_by, paid_to, amount, status, confirmed_by, confirmed_at, created_at`,
+        )
         .order("created_at", { ascending: false })
         .limit(50);
 
@@ -74,7 +76,9 @@ function Dashboard() {
 
         if (profErr) throw profErr;
 
-        profilesMap = Object.fromEntries((profilesData || []).map((p) => [p.id, p.name]));
+        profilesMap = Object.fromEntries(
+          (profilesData || []).map((p) => [p.id, p.name]),
+        );
         setProfiles(profilesData || []);
       }
 
@@ -96,11 +100,11 @@ function Dashboard() {
             e.status === "pending_approval"
               ? "PENDING"
               : e.status === "approved"
-              ? "APPROVED"
-              : e.status === "cleared"
-              ? "CLEARED"
-              : (e.status || "").toUpperCase(),
-        }))
+                ? "APPROVED"
+                : e.status === "cleared"
+                  ? "CLEARED"
+                  : (e.status || "").toUpperCase(),
+        })),
       );
 
       setSettlements(
@@ -119,7 +123,7 @@ function Dashboard() {
           owedTo: profilesMap[s.paid_to] || s.paid_to,
           amount: Number(s.amount),
           status: (s.status || "").toUpperCase(),
-        }))
+        })),
       );
     } catch (err) {
       console.error("Failed to load dashboard data:", err.message || err);
@@ -164,7 +168,7 @@ function Dashboard() {
 
     try {
       // Compute net between current user and other user (use approved statuses)
-      const approvedStatuses = ["APPROVED", "CLEARED"];
+      const approvedStatuses = ["APPROVED"];
 
       let owedToMe = 0;
       let iOwe = 0;
@@ -228,7 +232,8 @@ function Dashboard() {
 
   const handleConfirmSettlement = async (settlement) => {
     if (!profile) return;
-    if (profile.id !== settlement.paid_to_id) return console.warn("Only receiver can confirm");
+    if (profile.id !== settlement.paid_to_id)
+      return console.warn("Only receiver can confirm");
 
     try {
       const updates = {
@@ -238,7 +243,10 @@ function Dashboard() {
         updated_at: new Date().toISOString(),
       };
 
-      const { error: settleErr } = await supabase.from("settlements").update(updates).eq("id", settlement.id);
+      const { error: settleErr } = await supabase
+        .from("settlements")
+        .update(updates)
+        .eq("id", settlement.id);
       if (settleErr) throw settleErr;
 
       // Mark related expenses between the two users as cleared
@@ -247,10 +255,14 @@ function Dashboard() {
 
       const { error: expErr } = await supabase
         .from("expenses")
-        .update({ status: "cleared", cleared_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .update({
+          status: "cleared",
+          cleared_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
         .in("paid_by", [userA, userB])
         .in("owed_by", [userA, userB])
-        .neq("status", "cleared");
+        .eq("status", "approved");
 
       if (expErr) throw expErr;
 
@@ -274,7 +286,10 @@ function Dashboard() {
           updated_at: new Date().toISOString(),
         };
 
-        const { error } = await supabase.from("expenses").update(updates).eq("id", expenseId);
+        const { error } = await supabase
+          .from("expenses")
+          .update(updates)
+          .eq("id", expenseId);
         if (error) throw error;
 
         await loadData();
@@ -292,7 +307,10 @@ function Dashboard() {
           updated_at: new Date().toISOString(),
         };
 
-        const { error } = await supabase.from("expenses").update(updates).eq("id", expenseId);
+        const { error } = await supabase
+          .from("expenses")
+          .update(updates)
+          .eq("id", expenseId);
         if (error) throw error;
 
         await loadData();
@@ -388,54 +406,63 @@ function Dashboard() {
           {/* Current Balance */}
 
           <div className="rounded-xl border border-[#ccc9cc] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
-              <div className="mb-5 flex items-start justify-between">
-                <p className="text-[16px] font-medium uppercase tracking-wide text-[#58565c]">
-                  Current Balance
-                </p>
+            <div className="mb-5 flex items-start justify-between">
+              <p className="text-[16px] font-medium uppercase tracking-wide text-[#58565c]">
+                Current Balance
+              </p>
 
-                <span className="rounded-sm bg-[#fff0bf] px-3 py-1.5 text-[13px] font-semibold text-[#a65300]">
-                  Pending Approval ({expenses.filter((e) => e.status === "PENDING").length})
-                </span>
-              </div>
+              <span className="rounded-sm bg-[#fff0bf] px-3 py-1.5 text-[13px] font-semibold text-[#a65300]">
+                Pending Approval (
+                {expenses.filter((e) => e.status === "PENDING").length})
+              </span>
+            </div>
 
-              {(() => {
-                const approvedStatuses = ["APPROVED", "CLEARED"];
-                const approvedCount = expenses.filter((e) => approvedStatuses.includes(e.status)).length;
+            {(() => {
+              const approvedStatuses = ["APPROVED"];
+              const approvedCount = expenses.filter((e) =>
+                approvedStatuses.includes(e.status),
+              ).length;
 
-                let owedToMe = 0;
-                let iOwe = 0;
+              let owedToMe = 0;
+              let iOwe = 0;
 
-                if (profile?.id) {
-                  expenses.forEach((e) => {
-                    if (approvedStatuses.includes(e.status)) {
-                      if (e.paid_by_id === profile.id) owedToMe += e.owed || 0;
-                      if (e.owed_by_id === profile.id) iOwe += e.owed || 0;
-                    }
-                  });
-                }
+              if (profile?.id) {
+                expenses.forEach((e) => {
+                  if (approvedStatuses.includes(e.status)) {
+                    if (e.paid_by_id === profile.id) owedToMe += e.owed || 0;
+                    if (e.owed_by_id === profile.id) iOwe += e.owed || 0;
+                  }
+                });
+              }
 
-                const net = owedToMe - iOwe;
+              const net = owedToMe - iOwe;
 
-                const balanceText = !profile
-                  ? "Net balance"
-                  : net > 0
+              const balanceText = !profile
+                ? "Net balance"
+                : net > 0
                   ? "You will get"
                   : net < 0
-                  ? "You will pay"
-                  : "All settled";
+                    ? "You will pay"
+                    : "All settled";
 
-                return (
-                  <>
-                    <p className="text-[22px] font-medium text-[#29282b]">{balanceText}</p>
+              return (
+                <>
+                  <p className="text-[22px] font-medium text-[#29282b]">
+                    {balanceText}
+                  </p>
 
-                    <p className="mt-1 text-[42px] font-bold tracking-tight">{profile ? `₹${Math.abs(net).toLocaleString("en-IN")}` : "—"}</p>
+                  <p className="mt-1 text-[42px] font-bold tracking-tight">
+                    {profile
+                      ? `₹${Math.abs(net).toLocaleString("en-IN")}`
+                      : "—"}
+                  </p>
 
-                    <p className="mt-1 text-[14px] font-medium tracking-wide text-[#5e5b60]">
-                      {`Based on ${approvedCount} approved expenses`}
-                    </p>
-                  </>
-                );
-              })()}
+                  <p className="mt-1 text-[14px] font-medium tracking-wide text-[#5e5b60]">
+                    {`Based on ${approvedCount} approved expenses`}
+                  </p>
+                </>
+              );
+            })()}
           </div>
 
           {/* Actions */}
@@ -463,9 +490,25 @@ function Dashboard() {
               }`}
             >
               {marking ? (
-                <svg className="h-5 w-5 animate-spin text-gray-600" viewBox="0 0 24 24" fill="none">
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" strokeOpacity="0.2" />
-                  <path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+                <svg
+                  className="h-5 w-5 animate-spin text-gray-600"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                >
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    strokeOpacity="0.2"
+                  />
+                  <path
+                    d="M22 12a10 10 0 0 1-10 10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    strokeLinecap="round"
+                  />
                 </svg>
               ) : (
                 <CheckCircle size={21} />
@@ -543,7 +586,9 @@ function Dashboard() {
                           />
                         </svg>
 
-                        <span className="text-sm text-[#68656a]">Loading expenses…</span>
+                        <span className="text-sm text-[#68656a]">
+                          Loading expenses…
+                        </span>
                       </div>
                     </td>
                   </tr>
@@ -574,25 +619,26 @@ function Dashboard() {
                       </TableCell>
 
                       <TableCell>
-                        {expense.status === "PENDING" && profile?.id === expense.owed_by_id && (
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => handleApprove(expense.id)}
-                              className="rounded-md border border-[#4776ff] px-3 py-1.5 text-[14px] font-medium text-[#3166e8] transition hover:bg-[#eef3ff]"
-                            >
-                              Approve
-                            </button>
+                        {expense.status === "PENDING" &&
+                          profile?.id === expense.owed_by_id && (
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleApprove(expense.id)}
+                                className="rounded-md border border-[#4776ff] px-3 py-1.5 text-[14px] font-medium text-[#3166e8] transition hover:bg-[#eef3ff]"
+                              >
+                                Approve
+                              </button>
 
-                            <button
-                              type="button"
-                              onClick={() => handleDeny(expense.id)}
-                              className="rounded-md border border-[#ef4444] px-3 py-1.5 text-[14px] font-medium text-[#b42318] transition hover:bg-[#fff5f5]"
-                            >
-                              Deny
-                            </button>
-                          </div>
-                        )}
+                              <button
+                                type="button"
+                                onClick={() => handleDeny(expense.id)}
+                                className="rounded-md border border-[#ef4444] px-3 py-1.5 text-[14px] font-medium text-[#b42318] transition hover:bg-[#fff5f5]"
+                              >
+                                Deny
+                              </button>
+                            </div>
+                          )}
                       </TableCell>
                     </tr>
                   ))
@@ -600,7 +646,6 @@ function Dashboard() {
               </tbody>
             </table>
           </div>
-          
         </section>
 
         {/* ===================================================
@@ -626,7 +671,9 @@ function Dashboard() {
 
         <div className="mt-5 flex items-center justify-between">
           <p className="text-sm text-[#68656a]">
-            {loading ? "Loading…" : `Showing 1–${Math.min(expenses.length, 10)} of ${expenses.length} expenses`}
+            {loading
+              ? "Loading…"
+              : `Showing 1–${Math.min(expenses.length, 10)} of ${expenses.length} expenses`}
           </p>
 
           <div className="flex items-center gap-1">
@@ -741,9 +788,13 @@ function SettlementTable({ data, type, currentUserId, onConfirmSettlement }) {
           <tr className="border-b border-[#d5d2d5] bg-[#faf8f9]">
             <TableHeader>{type === "monthly" ? "Month" : "Date"}</TableHeader>
 
-            <TableHeader>{type === "settlements" ? "Paid By" : "Owed By"}</TableHeader>
+            <TableHeader>
+              {type === "settlements" ? "Paid By" : "Owed By"}
+            </TableHeader>
 
-            <TableHeader>{type === "settlements" ? "Paid To" : "Owed To"}</TableHeader>
+            <TableHeader>
+              {type === "settlements" ? "Paid To" : "Owed To"}
+            </TableHeader>
 
             <TableHeader>Amount</TableHeader>
 
@@ -755,8 +806,13 @@ function SettlementTable({ data, type, currentUserId, onConfirmSettlement }) {
 
         <tbody>
           {data.map((item) => (
-            <tr key={item.id} className="border-b border-[#d9d6d9] last:border-b-0">
-              <TableCell>{type === "monthly" ? item.month : item.date}</TableCell>
+            <tr
+              key={item.id}
+              className="border-b border-[#d9d6d9] last:border-b-0"
+            >
+              <TableCell>
+                {type === "monthly" ? item.month : item.date}
+              </TableCell>
 
               <TableCell>{item.paidBy || item.owedBy}</TableCell>
 
@@ -770,15 +826,16 @@ function SettlementTable({ data, type, currentUserId, onConfirmSettlement }) {
 
               {type === "settlements" && (
                 <TableCell>
-                  {item.status === "CLEARANCE_PENDING" && currentUserId === item.paid_to_id && (
-                    <button
-                      type="button"
-                      onClick={() => onConfirmSettlement(item)}
-                      className="rounded-md border border-[#16a34a] px-3 py-1.5 text-[14px] font-medium text-[#166534] transition hover:bg-[#ecfdf3]"
-                    >
-                      Confirm
-                    </button>
-                  )}
+                  {item.status === "CLEARANCE_PENDING" &&
+                    currentUserId === item.paid_to_id && (
+                      <button
+                        type="button"
+                        onClick={() => onConfirmSettlement(item)}
+                        className="rounded-md border border-[#16a34a] px-3 py-1.5 text-[14px] font-medium text-[#166534] transition hover:bg-[#ecfdf3]"
+                      >
+                        Confirm
+                      </button>
+                    )}
                 </TableCell>
               )}
             </tr>
