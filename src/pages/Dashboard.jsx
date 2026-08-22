@@ -24,9 +24,9 @@ function Dashboard() {
   const [isNewEntryOpen, setIsNewEntryOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [expenses, setExpenses] = useState([]);
-  const [monthlySettlements, setMonthlySettlements] = useState([]);
-  const [clearanceHistory, setClearanceHistory] = useState([]);
+  const [settlements, setSettlements] = useState([]);
   const [profiles, setProfiles] = useState([]);
+  const [marking, setMarking] = useState(false);
 
   async function loadData() {
     setLoading(true);
@@ -43,23 +43,14 @@ function Dashboard() {
 
       if (expErr) throw expErr;
 
-      // Monthly settlements
-      const { data: monthlyData, error: monthErr } = await supabase
-        .from("monthly_settlements")
-        .select(`id, month, owed_by, owed_to, amount`)
-        .order("month", { ascending: false })
-        .limit(12);
-
-      if (monthErr) throw monthErr;
-
-      // Cleared settlements history
-      const { data: clearedData, error: clearErr } = await supabase
+      // Settlements (all statuses)
+      const { data: settlementsData, error: settleErr } = await supabase
         .from("settlements")
-        .select(`id, marked_paid_at, paid_by, paid_to, amount, status`)
-        .order("marked_paid_at", { ascending: false })
+        .select(`id, marked_paid_at, paid_by, paid_to, amount, status, confirmed_by, confirmed_at, created_at`)
+        .order("created_at", { ascending: false })
         .limit(50);
 
-      if (clearErr) throw clearErr;
+      if (settleErr) throw settleErr;
 
       // Gather profile ids
       const ids = new Set();
@@ -67,11 +58,7 @@ function Dashboard() {
         if (e.paid_by) ids.add(e.paid_by);
         if (e.owed_by) ids.add(e.owed_by);
       });
-      (monthlyData || []).forEach((m) => {
-        if (m.owed_by) ids.add(m.owed_by);
-        if (m.owed_to) ids.add(m.owed_to);
-      });
-      (clearedData || []).forEach((s) => {
+      (settlementsData || []).forEach((s) => {
         if (s.paid_by) ids.add(s.paid_by);
         if (s.paid_to) ids.add(s.paid_to);
       });
@@ -116,22 +103,8 @@ function Dashboard() {
         }))
       );
 
-      setMonthlySettlements(
-        (monthlyData || []).map((m) => ({
-          id: m.id,
-          month: new Date(m.month).toLocaleString("en-IN", {
-            month: "long",
-            year: "numeric",
-          }),
-          owedBy: profilesMap[m.owed_by] || m.owed_by,
-          owedTo: profilesMap[m.owed_to] || m.owed_to,
-          amount: Number(m.amount),
-          status: "CLEARED",
-        }))
-      );
-
-      setClearanceHistory(
-        (clearedData || []).map((s) => ({
+      setSettlements(
+        (settlementsData || []).map((s) => ({
           id: s.id,
           date: s.marked_paid_at
             ? new Date(s.marked_paid_at).toLocaleDateString("en-IN", {
@@ -140,7 +113,9 @@ function Dashboard() {
                 year: "numeric",
               })
             : "-",
-          owedBy: profilesMap[s.paid_by] || s.paid_by,
+          paid_by_id: s.paid_by,
+          paid_to_id: s.paid_to,
+          paidBy: profilesMap[s.paid_by] || s.paid_by,
           owedTo: profilesMap[s.paid_to] || s.paid_to,
           amount: Number(s.amount),
           status: (s.status || "").toUpperCase(),
@@ -182,8 +157,107 @@ function Dashboard() {
   // MARK CLEAR
   // =========================================================
 
-  const handleMarkClear = () => {
-    console.log("Mark current balance as clear");
+  const handleMarkClear = async () => {
+    if (!profile) return alert("Not signed in");
+
+    setMarking(true);
+
+    try {
+      // Compute net between current user and other user (use approved statuses)
+      const approvedStatuses = ["APPROVED", "CLEARED"];
+
+      let owedToMe = 0;
+      let iOwe = 0;
+      expenses.forEach((e) => {
+        if (approvedStatuses.includes(e.status)) {
+          if (e.paid_by_id === profile?.id) owedToMe += e.owed || 0;
+          if (e.owed_by_id === profile?.id) iOwe += e.owed || 0;
+        }
+      });
+
+      const net = owedToMe - iOwe;
+
+      // find counterparty id
+      const otherId = (() => {
+        const p = profiles.find((p) => p.id !== profile.id);
+        if (p) return p.id;
+        for (const e of expenses) {
+          if (e.paid_by_id && e.paid_by_id !== profile.id) return e.paid_by_id;
+          if (e.owed_by_id && e.owed_by_id !== profile.id) return e.owed_by_id;
+        }
+        return null;
+      })();
+
+      if (!otherId) return alert("No counterparty found to settle with");
+
+      // Determine payer: payer should be the one who owes money (net < 0 -> profile owes)
+      const payerId = net < 0 ? profile.id : otherId;
+      const receiverId = payerId === profile.id ? otherId : profile.id;
+
+      // Only allow current user to create the settlement if they are the payer
+      if (payerId !== profile.id) {
+        return alert("Only the payer can mark the settlement");
+      }
+
+      const amount = Math.abs(net);
+      if (amount <= 0) return alert("Nothing to settle");
+
+      const payload = {
+        paid_by: payerId,
+        paid_to: receiverId,
+        amount,
+        status: "clearance_pending",
+        marked_paid_at: new Date().toISOString(),
+      };
+
+      console.log("Creating settlement payload", payload);
+
+      const { error } = await supabase.from("settlements").insert([payload]);
+      if (error) throw error;
+
+      alert("Settlement created successfully");
+
+      await loadData();
+    } catch (err) {
+      console.error("Failed to create settlement:", err.message || err);
+      alert("Failed to create settlement: " + (err.message || err));
+    } finally {
+      setMarking(false);
+    }
+  };
+
+  const handleConfirmSettlement = async (settlement) => {
+    if (!profile) return;
+    if (profile.id !== settlement.paid_to_id) return console.warn("Only receiver can confirm");
+
+    try {
+      const updates = {
+        status: "cleared",
+        confirmed_by: profile.id,
+        confirmed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error: settleErr } = await supabase.from("settlements").update(updates).eq("id", settlement.id);
+      if (settleErr) throw settleErr;
+
+      // Mark related expenses between the two users as cleared
+      const userA = settlement.paid_by_id;
+      const userB = settlement.paid_to_id;
+
+      const { error: expErr } = await supabase
+        .from("expenses")
+        .update({ status: "cleared", cleared_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .in("paid_by", [userA, userB])
+        .in("owed_by", [userA, userB])
+        .neq("status", "cleared");
+
+      if (expErr) throw expErr;
+
+      await loadData();
+    } catch (err) {
+      console.error("Failed to confirm settlement:", err.message || err);
+    }
   };
 
   // =========================================================
@@ -206,6 +280,24 @@ function Dashboard() {
         await loadData();
       } catch (err) {
         console.error("Failed to approve expense:", err.message || err);
+      }
+    })();
+  };
+
+  const handleDeny = (expenseId) => {
+    (async () => {
+      try {
+        const updates = {
+          status: "denied",
+          updated_at: new Date().toISOString(),
+        };
+
+        const { error } = await supabase.from("expenses").update(updates).eq("id", expenseId);
+        if (error) throw error;
+
+        await loadData();
+      } catch (err) {
+        console.error("Failed to deny expense:", err.message || err);
       }
     })();
   };
@@ -327,9 +419,9 @@ function Dashboard() {
                 const balanceText = !profile
                   ? "Net balance"
                   : net > 0
-                  ? "You are owed"
+                  ? "You will get"
                   : net < 0
-                  ? "You owe"
+                  ? "You will pay"
                   : "All settled";
 
                 return (
@@ -365,10 +457,21 @@ function Dashboard() {
             <button
               type="button"
               onClick={handleMarkClear}
-              className="mt-4 flex w-full items-center justify-center gap-3 rounded-md border border-[#c7c4c7] bg-white px-5 py-3.5 text-[16px] font-medium text-[#222] transition hover:bg-[#f5f3f4]"
+              disabled={marking}
+              className={`mt-4 flex w-full items-center justify-center gap-3 rounded-md border border-[#c7c4c7] bg-white px-5 py-3.5 text-[16px] font-medium text-[#222] transition ${
+                marking ? "opacity-70" : "hover:bg-[#f5f3f4]"
+              }`}
             >
-              <CheckCircle size={21} />
-              Mark Clear
+              {marking ? (
+                <svg className="h-5 w-5 animate-spin text-gray-600" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" strokeOpacity="0.2" />
+                  <path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+                </svg>
+              ) : (
+                <CheckCircle size={21} />
+              )}
+
+              {marking ? "Processing..." : "Mark Clear"}
             </button>
           </div>
         </section>
@@ -472,13 +575,23 @@ function Dashboard() {
 
                       <TableCell>
                         {expense.status === "PENDING" && profile?.id === expense.owed_by_id && (
-                          <button
-                            type="button"
-                            onClick={() => handleApprove(expense.id)}
-                            className="rounded-md border border-[#4776ff] px-3 py-1.5 text-[14px] font-medium text-[#3166e8] transition hover:bg-[#eef3ff]"
-                          >
-                            Approve
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleApprove(expense.id)}
+                              className="rounded-md border border-[#4776ff] px-3 py-1.5 text-[14px] font-medium text-[#3166e8] transition hover:bg-[#eef3ff]"
+                            >
+                              Approve
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleDeny(expense.id)}
+                              className="rounded-md border border-[#ef4444] px-3 py-1.5 text-[14px] font-medium text-[#b42318] transition hover:bg-[#fff5f5]"
+                            >
+                              Deny
+                            </button>
+                          </div>
                         )}
                       </TableCell>
                     </tr>
@@ -495,57 +608,16 @@ function Dashboard() {
         ==================================================== */}
 
         <section className="mt-7 overflow-hidden rounded-xl border border-[#ccc9cc] bg-white">
-          {/* Tabs */}
-
-          <div className="flex border-b border-[#d5d2d5] px-7">
-            {/* Monthly Settlements */}
-
-            <button
-              type="button"
-              onClick={() => setActiveTab("monthly")}
-              className={`
-                relative mr-8 px-0 py-5 text-[16px] font-semibold
-                ${activeTab === "monthly" ? "text-[#1b1b1d]" : "text-[#68656a]"}
-              `}
-            >
-              Monthly Settlements
-              {activeTab === "monthly" && (
-                <span className="absolute bottom-[-1px] left-0 right-0 h-[2px] bg-black" />
-              )}
-            </button>
-
-            {/* Clearance History */}
-
-            <button
-              type="button"
-              onClick={() => setActiveTab("clearance")}
-              className={`
-                relative px-0 py-5 text-[16px] font-semibold
-                ${
-                  activeTab === "clearance"
-                    ? "text-[#1b1b1d]"
-                    : "text-[#68656a]"
-                }
-              `}
-            >
-              Clearance History
-              {activeTab === "clearance" && (
-                <span className="absolute bottom-[-1px] left-0 right-0 h-[2px] bg-black" />
-              )}
-            </button>
+          <div className="flex items-center justify-between border-b border-[#d5d2d5] px-7 py-5">
+            <h2 className="text-[23px] font-bold">Settlements</h2>
           </div>
 
-          {/* Monthly Settlements */}
-
-          {activeTab === "monthly" && (
-            <SettlementTable data={monthlySettlements} type="monthly" />
-          )}
-
-          {/* Clearance History */}
-
-          {activeTab === "clearance" && (
-            <SettlementTable data={clearanceHistory} type="clearance" />
-          )}
+          <SettlementTable
+            data={settlements}
+            type="settlements"
+            currentUserId={profile?.id}
+            onConfirmSettlement={handleConfirmSettlement}
+          />
         </section>
 
         {/* ===================================================
@@ -636,6 +708,7 @@ function StatusBadge({ status }) {
     PENDING: "bg-[#fff0bf] text-[#a65300]",
     APPROVED: "bg-[#dceaff] text-[#2858b9]",
     CLEARED: "bg-[#d9f7e4] text-[#18733b]",
+    DENIED: "bg-[#fff1f2] text-[#b42318]",
   };
 
   return (
@@ -660,7 +733,7 @@ function StatusBadge({ status }) {
    SETTLEMENT TABLE
 ========================================================= */
 
-function SettlementTable({ data, type }) {
+function SettlementTable({ data, type, currentUserId, onConfirmSettlement }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[750px] border-collapse">
@@ -668,35 +741,46 @@ function SettlementTable({ data, type }) {
           <tr className="border-b border-[#d5d2d5] bg-[#faf8f9]">
             <TableHeader>{type === "monthly" ? "Month" : "Date"}</TableHeader>
 
-            <TableHeader>Owed By</TableHeader>
+            <TableHeader>{type === "settlements" ? "Paid By" : "Owed By"}</TableHeader>
 
-            <TableHeader>Owed To</TableHeader>
+            <TableHeader>{type === "settlements" ? "Paid To" : "Owed To"}</TableHeader>
 
             <TableHeader>Amount</TableHeader>
 
             <TableHeader>Status</TableHeader>
+
+            {type === "settlements" && <TableHeader>Action</TableHeader>}
           </tr>
         </thead>
 
         <tbody>
           {data.map((item) => (
-            <tr
-              key={item.id}
-              className="border-b border-[#d9d6d9] last:border-b-0"
-            >
-              <TableCell>
-                {type === "monthly" ? item.month : item.date}
-              </TableCell>
+            <tr key={item.id} className="border-b border-[#d9d6d9] last:border-b-0">
+              <TableCell>{type === "monthly" ? item.month : item.date}</TableCell>
 
-              <TableCell>{item.owedBy}</TableCell>
+              <TableCell>{item.paidBy || item.owedBy}</TableCell>
 
-              <TableCell>{item.owedTo}</TableCell>
+              <TableCell>{item.owedTo || item.owedTo}</TableCell>
 
               <TableCell>₹{item.amount.toLocaleString("en-IN")}</TableCell>
 
               <TableCell>
                 <StatusBadge status={item.status} />
               </TableCell>
+
+              {type === "settlements" && (
+                <TableCell>
+                  {item.status === "CLEARANCE_PENDING" && currentUserId === item.paid_to_id && (
+                    <button
+                      type="button"
+                      onClick={() => onConfirmSettlement(item)}
+                      className="rounded-md border border-[#16a34a] px-3 py-1.5 text-[14px] font-medium text-[#166534] transition hover:bg-[#ecfdf3]"
+                    >
+                      Confirm
+                    </button>
+                  )}
+                </TableCell>
+              )}
             </tr>
           ))}
         </tbody>
