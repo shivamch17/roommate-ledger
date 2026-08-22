@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAtomValue } from "jotai";
 import {
   Bell,
@@ -22,87 +22,141 @@ function Dashboard() {
   const [activeTab, setActiveTab] = useState("monthly");
   const [currentPage, setCurrentPage] = useState(1);
   const [isNewEntryOpen, setIsNewEntryOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [expenses, setExpenses] = useState([]);
+  const [monthlySettlements, setMonthlySettlements] = useState([]);
+  const [clearanceHistory, setClearanceHistory] = useState([]);
+  const [profiles, setProfiles] = useState([]);
 
-  // =========================================================
-  // TEMPORARY EXPENSE DATA
-  // We will replace this with Supabase data later.
-  // =========================================================
+  async function loadData() {
+    setLoading(true);
 
-  const expenses = [
-    {
-      id: 1,
-      date: "24 Aug 2026",
-      paidBy: "Shivam",
-      reason: "Electricity",
-      total: 800,
-      owed: 400,
-      status: "PENDING",
-    },
-    {
-      id: 2,
-      date: "22 Aug 2026",
-      paidBy: "Vishal",
-      reason: "Groceries",
-      total: 1000,
-      owed: 400,
-      status: "APPROVED",
-    },
-    {
-      id: 3,
-      date: "20 Aug 2026",
-      paidBy: "Vishal",
-      reason: "Internet",
-      total: 600,
-      owed: 300,
-      status: "APPROVED",
-    },
-  ];
+    try {
+      // Expenses
+      const { data: expensesData, error: expErr } = await supabase
+        .from("expenses")
+        .select(
+          `id, created_at, paid_by, owed_by, description, total_amount, owed_amount, status, approved_at`
+        )
+        .order("created_at", { ascending: false })
+        .limit(50);
 
-  // =========================================================
-  // TEMPORARY MONTHLY SETTLEMENT DATA
-  // =========================================================
+      if (expErr) throw expErr;
 
-  const monthlySettlements = [
-    {
-      id: 1,
-      month: "June 2026",
-      owedBy: "Shivam",
-      owedTo: "Vishal",
-      amount: 1200,
-      status: "CLEARED",
-    },
-    {
-      id: 2,
-      month: "May 2026",
-      owedBy: "Vishal",
-      owedTo: "Shivam",
-      amount: 450,
-      status: "CLEARED",
-    },
-  ];
+      // Monthly settlements
+      const { data: monthlyData, error: monthErr } = await supabase
+        .from("monthly_settlements")
+        .select(`id, month, owed_by, owed_to, amount`)
+        .order("month", { ascending: false })
+        .limit(12);
 
-  // =========================================================
-  // TEMPORARY CLEARANCE HISTORY DATA
-  // =========================================================
+      if (monthErr) throw monthErr;
 
-  const clearanceHistory = [
-    {
-      id: 1,
-      date: "30 June 2026",
-      owedBy: "Shivam",
-      owedTo: "Vishal",
-      amount: 1200,
-      status: "CLEARED",
-    },
-    {
-      id: 2,
-      date: "31 May 2026",
-      owedBy: "Vishal",
-      owedTo: "Shivam",
-      amount: 450,
-      status: "CLEARED",
-    },
-  ];
+      // Cleared settlements history
+      const { data: clearedData, error: clearErr } = await supabase
+        .from("settlements")
+        .select(`id, marked_paid_at, paid_by, paid_to, amount, status`)
+        .order("marked_paid_at", { ascending: false })
+        .limit(50);
+
+      if (clearErr) throw clearErr;
+
+      // Gather profile ids
+      const ids = new Set();
+      (expensesData || []).forEach((e) => {
+        if (e.paid_by) ids.add(e.paid_by);
+        if (e.owed_by) ids.add(e.owed_by);
+      });
+      (monthlyData || []).forEach((m) => {
+        if (m.owed_by) ids.add(m.owed_by);
+        if (m.owed_to) ids.add(m.owed_to);
+      });
+      (clearedData || []).forEach((s) => {
+        if (s.paid_by) ids.add(s.paid_by);
+        if (s.paid_to) ids.add(s.paid_to);
+      });
+
+      const idArray = Array.from(ids);
+
+      let profilesMap = {};
+      if (idArray.length) {
+        const { data: profilesData, error: profErr } = await supabase
+          .from("profiles")
+          .select("id, name")
+          .in("id", idArray);
+
+        if (profErr) throw profErr;
+
+        profilesMap = Object.fromEntries((profilesData || []).map((p) => [p.id, p.name]));
+        setProfiles(profilesData || []);
+      }
+
+      setExpenses(
+        (expensesData || []).map((e) => ({
+          id: e.id,
+          date: new Date(e.created_at).toLocaleDateString("en-IN", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          }),
+          paidBy: profilesMap[e.paid_by] || e.paid_by,
+          paid_by_id: e.paid_by,
+          owed_by_id: e.owed_by,
+          reason: e.description,
+          total: Number(e.total_amount),
+          owed: Number(e.owed_amount),
+          status:
+            e.status === "pending_approval"
+              ? "PENDING"
+              : e.status === "approved"
+              ? "APPROVED"
+              : e.status === "cleared"
+              ? "CLEARED"
+              : (e.status || "").toUpperCase(),
+        }))
+      );
+
+      setMonthlySettlements(
+        (monthlyData || []).map((m) => ({
+          id: m.id,
+          month: new Date(m.month).toLocaleString("en-IN", {
+            month: "long",
+            year: "numeric",
+          }),
+          owedBy: profilesMap[m.owed_by] || m.owed_by,
+          owedTo: profilesMap[m.owed_to] || m.owed_to,
+          amount: Number(m.amount),
+          status: "CLEARED",
+        }))
+      );
+
+      setClearanceHistory(
+        (clearedData || []).map((s) => ({
+          id: s.id,
+          date: s.marked_paid_at
+            ? new Date(s.marked_paid_at).toLocaleDateString("en-IN", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+              })
+            : "-",
+          owedBy: profilesMap[s.paid_by] || s.paid_by,
+          owedTo: profilesMap[s.paid_to] || s.paid_to,
+          amount: Number(s.amount),
+          status: (s.status || "").toUpperCase(),
+        }))
+      );
+    } catch (err) {
+      console.error("Failed to load dashboard data:", err.message || err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // =========================================================
   // LOGOUT
@@ -137,7 +191,23 @@ function Dashboard() {
   // =========================================================
 
   const handleApprove = (expenseId) => {
-    console.log("Approve expense:", expenseId);
+    (async () => {
+      try {
+        const updates = {
+          status: "approved",
+          approved_by: profile?.id || null,
+          approved_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
+        const { error } = await supabase.from("expenses").update(updates).eq("id", expenseId);
+        if (error) throw error;
+
+        await loadData();
+      } catch (err) {
+        console.error("Failed to approve expense:", err.message || err);
+      }
+    })();
   };
 
   // =========================================================
@@ -226,25 +296,54 @@ function Dashboard() {
           {/* Current Balance */}
 
           <div className="rounded-xl border border-[#ccc9cc] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
-            <div className="mb-5 flex items-start justify-between">
-              <p className="text-[16px] font-medium uppercase tracking-wide text-[#58565c]">
-                Current Balance
-              </p>
+              <div className="mb-5 flex items-start justify-between">
+                <p className="text-[16px] font-medium uppercase tracking-wide text-[#58565c]">
+                  Current Balance
+                </p>
 
-              <span className="rounded-sm bg-[#fff0bf] px-3 py-1.5 text-[13px] font-semibold text-[#a65300]">
-                Pending Approval (1)
-              </span>
-            </div>
+                <span className="rounded-sm bg-[#fff0bf] px-3 py-1.5 text-[13px] font-semibold text-[#a65300]">
+                  Pending Approval ({expenses.filter((e) => e.status === "PENDING").length})
+                </span>
+              </div>
 
-            <p className="text-[22px] font-medium text-[#29282b]">
-              Shivam owes Vishal
-            </p>
+              {(() => {
+                const approvedStatuses = ["APPROVED", "CLEARED"];
+                const approvedCount = expenses.filter((e) => approvedStatuses.includes(e.status)).length;
 
-            <p className="mt-1 text-[42px] font-bold tracking-tight">₹1,250</p>
+                let owedToMe = 0;
+                let iOwe = 0;
 
-            <p className="mt-1 text-[14px] font-medium tracking-wide text-[#5e5b60]">
-              Based on 8 approved expenses
-            </p>
+                if (profile?.id) {
+                  expenses.forEach((e) => {
+                    if (approvedStatuses.includes(e.status)) {
+                      if (e.paid_by_id === profile.id) owedToMe += e.owed || 0;
+                      if (e.owed_by_id === profile.id) iOwe += e.owed || 0;
+                    }
+                  });
+                }
+
+                const net = owedToMe - iOwe;
+
+                const balanceText = !profile
+                  ? "Net balance"
+                  : net > 0
+                  ? "You are owed"
+                  : net < 0
+                  ? "You owe"
+                  : "All settled";
+
+                return (
+                  <>
+                    <p className="text-[22px] font-medium text-[#29282b]">{balanceText}</p>
+
+                    <p className="mt-1 text-[42px] font-bold tracking-tight">{profile ? `₹${Math.abs(net).toLocaleString("en-IN")}` : "—"}</p>
+
+                    <p className="mt-1 text-[14px] font-medium tracking-wide text-[#5e5b60]">
+                      {`Based on ${approvedCount} approved expenses`}
+                    </p>
+                  </>
+                );
+              })()}
           </div>
 
           {/* Actions */}
@@ -316,57 +415,79 @@ function Dashboard() {
               </thead>
 
               <tbody>
-                {expenses.map((expense) => (
-                  <tr
-                    key={expense.id}
-                    className="border-b border-[#d9d6d9] last:border-b-0 hover:bg-[#fdfbfc]"
-                  >
-                    <TableCell>{expense.date}</TableCell>
-
-                    <TableCell>{expense.paidBy}</TableCell>
-
-                    <TableCell>
-                      <span className="font-medium">{expense.reason}</span>
-                    </TableCell>
-
-                    <TableCell>
-                      ₹{expense.total.toLocaleString("en-IN")}
-                    </TableCell>
-
-                    <TableCell>
-                      ₹{expense.owed.toLocaleString("en-IN")}
-                    </TableCell>
-
-                    <TableCell>
-                      <StatusBadge status={expense.status} />
-                    </TableCell>
-
-                    <TableCell>
-                      {expense.status === "PENDING" && (
-                        <button
-                          type="button"
-                          onClick={() => handleApprove(expense.id)}
-                          className="rounded-md border border-[#4776ff] px-3 py-1.5 text-[14px] font-medium text-[#3166e8] transition hover:bg-[#eef3ff]"
+                {loading ? (
+                  <tr>
+                    <td colSpan={7} className="py-12">
+                      <div className="flex items-center justify-center gap-3">
+                        <svg
+                          className="h-5 w-5 animate-spin text-gray-600"
+                          viewBox="0 0 24 24"
+                          fill="none"
                         >
-                          Approve
-                        </button>
-                      )}
-                    </TableCell>
+                          <circle
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                            strokeOpacity="0.2"
+                          />
+                          <path
+                            d="M22 12a10 10 0 0 1-10 10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                            strokeLinecap="round"
+                          />
+                        </svg>
+
+                        <span className="text-sm text-[#68656a]">Loading expenses…</span>
+                      </div>
+                    </td>
                   </tr>
-                ))}
+                ) : (
+                  expenses.map((expense) => (
+                    <tr
+                      key={expense.id}
+                      className="border-b border-[#d9d6d9] last:border-b-0 hover:bg-[#fdfbfc]"
+                    >
+                      <TableCell>{expense.date}</TableCell>
+
+                      <TableCell>{expense.paidBy}</TableCell>
+
+                      <TableCell>
+                        <span className="font-medium">{expense.reason}</span>
+                      </TableCell>
+
+                      <TableCell>
+                        ₹{expense.total.toLocaleString("en-IN")}
+                      </TableCell>
+
+                      <TableCell>
+                        ₹{expense.owed.toLocaleString("en-IN")}
+                      </TableCell>
+
+                      <TableCell>
+                        <StatusBadge status={expense.status} />
+                      </TableCell>
+
+                      <TableCell>
+                        {expense.status === "PENDING" && profile?.id === expense.owed_by_id && (
+                          <button
+                            type="button"
+                            onClick={() => handleApprove(expense.id)}
+                            className="rounded-md border border-[#4776ff] px-3 py-1.5 text-[14px] font-medium text-[#3166e8] transition hover:bg-[#eef3ff]"
+                          >
+                            Approve
+                          </button>
+                        )}
+                      </TableCell>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
-
-          {/* View All */}
-
-          <button
-            type="button"
-            className="flex w-full items-center justify-center gap-2 border-t border-[#d5d2d5] py-3.5 text-[14px] font-semibold transition hover:bg-[#f8f6f7]"
-          >
-            View All Expenses
-            <ArrowRight size={16} />
-          </button>
+          
         </section>
 
         {/* ===================================================
@@ -432,7 +553,9 @@ function Dashboard() {
         ==================================================== */}
 
         <div className="mt-5 flex items-center justify-between">
-          <p className="text-sm text-[#68656a]">Showing 1–3 of 3 expenses</p>
+          <p className="text-sm text-[#68656a]">
+            {loading ? "Loading…" : `Showing 1–${Math.min(expenses.length, 10)} of ${expenses.length} expenses`}
+          </p>
 
           <div className="flex items-center gap-1">
             {/* Previous */}
@@ -476,6 +599,7 @@ function Dashboard() {
           onClose={() => setIsNewEntryOpen(false)}
           onSuccess={() => {
             setIsNewEntryOpen(false);
+            loadData();
           }}
         />
       </main>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { X } from "lucide-react";
+import { supabase } from "../../lib/supabase";
 
 function NewEntryModal({ isOpen, onClose, onSuccess }) {
   const [amount, setAmount] = useState("");
@@ -51,19 +52,40 @@ function NewEntryModal({ isOpen, onClose, onSuccess }) {
     try {
       setLoading(true);
 
-      // ------------------------------------------------
-      // SUPABASE INSERT WILL BE ADDED HERE LATER
-      // ------------------------------------------------
+      // Get current authenticated user
+      const {
+        data: { user },
+        error: userErr,
+      } = await supabase.auth.getUser();
 
-      console.log("New Expense:", {
-        totalAmount,
-        reason: reason.trim(),
-        roommateOwed,
-        yourShare,
-      });
+      if (userErr) throw userErr;
+      if (!user) throw new Error("Not authenticated");
 
-      // Simulate successful submission
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      // Find a roommate/profile other than current user (simple two-person assumption)
+      const { data: otherProfiles, error: profErr } = await supabase
+        .from("profiles")
+        .select("id")
+        .neq("id", user.id)
+        .limit(1);
+
+      if (profErr) throw profErr;
+      if (!otherProfiles || otherProfiles.length === 0)
+        throw new Error("No roommate profile found");
+
+      const roommateId = otherProfiles[0].id;
+
+      const payload = {
+        created_by: user.id,
+        paid_by: user.id,
+        total_amount: totalAmount,
+        description: reason.trim(),
+        owed_by: roommateId,
+        owed_amount: roommateOwed,
+        status: "pending_approval",
+      };
+
+      const { error: insertErr } = await supabase.from("expenses").insert([payload]);
+      if (insertErr) throw insertErr;
 
       // Reset form
       setAmount("");
