@@ -253,8 +253,22 @@ function NewEntryModal({ isOpen, onClose, onSuccess }) {
                 }
                 placeholder="0.00"
                 disabled={loading}
-                className="w-full rounded-md border border-[#c9c6c9] bg-white py-3 pl-9 pr-4 text-[16px] outline-none transition placeholder:text-[#aaa7ab] focus:border-black disabled:bg-[#f5f3f4]"
+                className="w-full rounded-md border border-[#c9c6c9] bg-white py-3 pl-9 pr-16 text-[16px] outline-none transition placeholder:text-[#aaa7ab] focus:border-black disabled:bg-[#f5f3f4]"
               />
+
+              {/* Split /2: fill owed amount with half the total */}
+              <button
+                type="button"
+                onClick={() =>
+                  setOwedAmount(Number(totalAmount / 2).toFixed(2))
+                }
+                disabled={loading || !amount || totalAmount <= 0}
+                className="absolute right-5 top-1/2 -translate-y-1/2 rounded-md border border-[#c9c6c9] bg-white px-2 py-1 text-[12px] font-semibold text-[#58565c] transition hover:bg-[#f5f3f4] hover:text-black disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label="Split total evenly"
+                title="Divide by 2"
+              >
+                /2
+              </button>
             </div>
 
             <p className="mt-2 text-[12px] text-[#77747a]">
