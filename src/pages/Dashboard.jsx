@@ -346,7 +346,7 @@ function Dashboard() {
       ====================================================== */}
 
       <header className="border-b border-[#d5d1d4] bg-[#fcf8fa]">
-        <div className="mx-auto flex max-w-[1250px] items-center justify-between px-6 py-4">
+        <div className="mx-auto flex max-w-[1250px] items-center justify-between max-sm:px-4 max-sm:py-3 px-6 py-4">
           {/* Logo / Title */}
 
           <div>
@@ -381,16 +381,16 @@ function Dashboard() {
           MAIN
       ====================================================== */}
 
-      <main className="mx-auto max-w-[1250px] px-6 py-7">
+      <main className="mx-auto max-w-[1250px] max-sm:px-4 max-sm:py-5 px-6 py-7">
         {/* ===================================================
             TOP SECTION
         ==================================================== */}
 
-        <section className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_400px]">
+        <section className="grid grid-cols-1 max-sm:gap-4 gap-5 lg:grid-cols-[1fr_400px]">
           {/* Current Balance */}
 
-          <div className="rounded-xl border border-[#ccc9cc] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
-            <div className="mb-5 flex items-start justify-between">
+          <div className="rounded-xl border border-[#ccc9cc] bg-white max-sm:p-5 p-7 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
+            <div className="max-sm:mb-4 mb-5 flex items-start justify-between">
               <p className="text-[16px] font-medium uppercase tracking-wide text-[#58565c]">
                 Current Balance
               </p>
@@ -451,55 +451,57 @@ function Dashboard() {
 
           {/* Actions */}
 
-          <div className="rounded-xl border border-[#ccc9cc] bg-white p-7">
-            {/* New Entry */}
+          <div className="rounded-xl border border-[#ccc9cc] bg-white max-sm:p-5 p-7">
+            <div className="flex flex-col max-sm:flex-row max-sm:gap-3 w-full h-full justify-between">
+              {/* New Entry */}
 
-            <button
-              type="button"
-              onClick={handleNewEntry}
-              className="flex w-full items-center justify-center gap-3 rounded-md bg-black px-5 py-4 text-[16px] font-semibold text-white transition hover:bg-[#222]"
-            >
-              <Plus size={21} />
-              New Entry
-            </button>
+              <button
+                type="button"
+                onClick={handleNewEntry}
+                className="flex w-full max-sm:w-1/2 items-center justify-center gap-3 rounded-md bg-black px-5 py-4 text-[16px] font-semibold text-white transition hover:bg-[#222]"
+              >
+                <Plus size={21} />
+                New Entry
+              </button>
 
-            {/* Mark Clear */}
+              {/* Mark Clear */}
 
-            <button
-              type="button"
-              onClick={handleMarkClear}
-              disabled={marking}
-              className={`mt-4 flex w-full items-center justify-center gap-3 rounded-md border border-[#c7c4c7] bg-white px-5 py-3.5 text-[16px] font-medium text-[#222] transition ${
-                marking ? "opacity-70" : "hover:bg-[#f5f3f4]"
-              }`}
-            >
-              {marking ? (
-                <svg
-                  className="h-5 w-5 animate-spin text-gray-600"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                >
-                  <circle
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                    strokeOpacity="0.2"
-                  />
-                  <path
-                    d="M22 12a10 10 0 0 1-10 10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              ) : (
-                <CheckCircle size={21} />
-              )}
+              <button
+                type="button"
+                onClick={handleMarkClear}
+                disabled={marking}
+                className={`flex w-full max-sm:w-1/2 items-center justify-center gap-3 rounded-md border border-[#c7c4c7] bg-white px-5 py-3.5 text-[16px] font-medium text-[#222] transition ${
+                  marking ? "opacity-70" : "hover:bg-[#f5f3f4]"
+                }`}
+              >
+                {marking ? (
+                  <svg
+                    className="h-5 w-5 animate-spin text-gray-600"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                  >
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      strokeOpacity="0.2"
+                    />
+                    <path
+                      d="M22 12a10 10 0 0 1-10 10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                ) : (
+                  <CheckCircle size={21} />
+                )}
 
-              {marking ? "Processing..." : "Mark Clear"}
-            </button>
+                {marking ? "Processing..." : "Mark Clear"}
+              </button>
+            </div>
           </div>
         </section>
 
@@ -507,30 +509,24 @@ function Dashboard() {
             EXPENSES
         ==================================================== */}
 
-        <section className="mt-7 overflow-hidden rounded-xl border border-[#ccc9cc] bg-white">
+        <section className="max-sm:mt-5 mt-7 overflow-hidden rounded-xl border border-[#ccc9cc] bg-white">
           {/* Section Header */}
 
-          <div className="flex items-center justify-between gap-4 border-b border-[#d5d2d5] px-7 py-5">
+          <div className="flex items-center justify-between gap-4 border-b border-[#d5d2d5] max-sm:px-4 max-sm:py-4 px-7 py-5">
             <h2 className="text-[23px] font-bold">Expenses</h2>
 
-            <div className="flex items-center gap-3">
-              <label className="text-[12px] font-semibold uppercase tracking-wide text-[#58565c]">
-                Status
-              </label>
-
-              <select
-                value={expenseStatusFilter}
-                onChange={(event) => setExpenseStatusFilter(event.target.value)}
-                className="rounded-md border border-[#c9c6c9] bg-white px-3 py-2 text-[14px] font-medium text-[#2c2b2f] outline-none transition focus:border-black"
-                aria-label="Filter expenses by status"
-              >
-                <option value="ALL">All</option>
-                <option value="PENDING">Pending</option>
-                <option value="APPROVED">Approved</option>
-                <option value="CLEARED">Cleared</option>
-                <option value="DENIED">Denied</option>
-              </select>
-            </div>
+            <select
+              value={expenseStatusFilter}
+              onChange={(event) => setExpenseStatusFilter(event.target.value)}
+              className="rounded-md border border-[#c9c6c9] bg-white px-3 py-2 text-[14px] font-medium text-[#2c2b2f] outline-none transition focus:border-black"
+              aria-label="Filter expenses by status"
+            >
+              <option value="ALL">All</option>
+              <option value="PENDING">Pending</option>
+              <option value="APPROVED">Approved</option>
+              <option value="CLEARED">Cleared</option>
+              <option value="DENIED">Denied</option>
+            </select>
           </div>
 
           {/* Table */}
@@ -655,7 +651,7 @@ function Dashboard() {
             SETTLEMENT HISTORY
         ==================================================== */}
 
-        <section className="mt-7 overflow-hidden rounded-xl border border-[#ccc9cc] bg-white">
+        <section className="max-sm:mt-5 mt-7 overflow-hidden rounded-xl border border-[#ccc9cc] bg-white">
           <div className="flex items-center justify-between border-b border-[#d5d2d5] px-7 py-5">
             <h2 className="text-[23px] font-bold">Settlements</h2>
           </div>
