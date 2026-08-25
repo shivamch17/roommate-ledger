@@ -19,8 +19,6 @@ import NewEntryModal from "../components/expense/NewEntryModal";
 function Dashboard() {
   const profile = useAtomValue(profileAtom);
 
-  const [activeTab, setActiveTab] = useState("monthly");
-  const [currentPage, setCurrentPage] = useState(1);
   const [isNewEntryOpen, setIsNewEntryOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [expenses, setExpenses] = useState([]);
@@ -435,11 +433,36 @@ function Dashboard() {
                     {balanceText}
                   </p>
 
-                  <p className="mt-1 max-sm:text-[34px] text-[42px] font-bold tracking-tight">
-                    {profile
-                      ? `₹${Math.abs(net).toLocaleString("en-IN")}`
-                      : "—"}
-                  </p>
+                  {loading ? (
+                    <div className="mt-2 flex items-center gap-3">
+                      <svg
+                        className="h-5 w-5 animate-spin text-gray-600"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                      >
+                        <circle
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                          strokeOpacity="0.2"
+                        />
+                        <path
+                          d="M22 12a10 10 0 0 1-10 10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    </div>
+                  ) : (
+                    <p className="mt-1 max-sm:text-[34px] text-[42px] font-bold tracking-tight">
+                      {profile
+                        ? `₹${Math.abs(net).toLocaleString("en-IN")}`
+                        : "—"}
+                    </p>
+                  )}
 
                   <p className="mt-1 max-sm:text-[12px] text-[14px] font-medium tracking-wide text-[#5e5b60]">
                     {`Based on ${approvedCount} approved expenses`}
@@ -458,7 +481,7 @@ function Dashboard() {
               <button
                 type="button"
                 onClick={handleNewEntry}
-                className="flex w-full max-sm:w-1/2 items-center justify-center gap-3 rounded-md bg-black px-5 py-4 max-sm:text-[14px] text-[16px] font-semibold text-white transition hover:bg-[#222]"
+                className="flex w-full max-sm:w-1/2 items-center justify-center gap-1 md:gap-3 rounded-md bg-black px-3 py-2 md:px-5 md:py-4 max-sm:text-[14px] text-[16px] font-semibold text-white transition hover:bg-[#222]"
               >
                 <Plus size={21} />
                 New Entry
@@ -470,7 +493,7 @@ function Dashboard() {
                 type="button"
                 onClick={handleMarkClear}
                 disabled={marking}
-                className={`flex w-full max-sm:w-1/2 items-center justify-center gap-3 rounded-md border border-[#c7c4c7] bg-white px-5 py-3.5 max-sm:text-[14px] text-[16px] font-medium text-[#222] transition ${
+                className={`flex w-full max-sm:w-1/2 items-center justify-center gap-1 md:gap-3 rounded-md border border-[#c7c4c7] bg-white px-3 py-2 md:px-5 md:py-4 max-sm:text-[14px] text-[16px] font-medium text-[#222] transition ${
                   marking ? "opacity-70" : "hover:bg-[#f5f3f4]"
                 }`}
               >
