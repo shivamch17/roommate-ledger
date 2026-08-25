@@ -163,6 +163,12 @@ function Dashboard() {
   const handleMarkClear = async () => {
     if (!profile) return alert("Not signed in");
 
+    // Ask for confirmation before proceeding
+    const confirmed = window.confirm(
+      "This will mark the current balance as cleared and create a settlement record. Continue?",
+    );
+    if (!confirmed) return;
+
     setMarking(true);
 
     try {
