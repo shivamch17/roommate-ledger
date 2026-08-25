@@ -792,41 +792,51 @@ function SettlementTable({ data, type, currentUserId, onConfirmSettlement }) {
         </thead>
 
         <tbody>
-          {data.map((item) => (
-            <tr
-              key={item.id}
-              className="border-b border-[#d9d6d9] last:border-b-0"
-            >
-              <TableCell>
-                {type === "monthly" ? item.month : item.date}
-              </TableCell>
-
-              <TableCell>{item.paidBy || item.owedBy}</TableCell>
-
-              <TableCell>{item.owedTo || item.owedTo}</TableCell>
-
-              <TableCell>₹{item.amount.toLocaleString("en-IN")}</TableCell>
-
-              <TableCell>
-                <StatusBadge status={item.status} />
-              </TableCell>
-
-              {type === "settlements" && (
-                <TableCell>
-                  {item.status === "CLEARANCE_PENDING" &&
-                    currentUserId === item.paid_to_id && (
-                      <button
-                        type="button"
-                        onClick={() => onConfirmSettlement(item)}
-                        className="rounded-md border border-[#16a34a] px-3 py-1.5 max-sm:text-[12px] text-[14px] font-medium text-[#166534] transition hover:bg-[#ecfdf3]"
-                      >
-                        Confirm
-                      </button>
-                    )}
-                </TableCell>
-              )}
+          {data.length === 0 ? (
+            <tr>
+              <td colSpan={6} className="py-12 text-center">
+                <span className="max-sm:text-[13px] text-[15px] text-[#68656a]">
+                  No settlements found to display.
+                </span>
+              </td>
             </tr>
-          ))}
+          ) : (
+            data.map((item) => (
+              <tr
+                key={item.id}
+                className="border-b border-[#d9d6d9] last:border-b-0"
+              >
+                <TableCell>
+                  {type === "monthly" ? item.month : item.date}
+                </TableCell>
+
+                <TableCell>{item.paidBy || item.owedBy}</TableCell>
+
+                <TableCell>{item.owedTo || item.owedTo}</TableCell>
+
+                <TableCell>₹{item.amount.toLocaleString("en-IN")}</TableCell>
+
+                <TableCell>
+                  <StatusBadge status={item.status} />
+                </TableCell>
+
+                {type === "settlements" && (
+                  <TableCell>
+                    {item.status === "CLEARANCE_PENDING" &&
+                      currentUserId === item.paid_to_id && (
+                        <button
+                          type="button"
+                          onClick={() => onConfirmSettlement(item)}
+                          className="rounded-md border border-[#16a34a] px-3 py-1.5 max-sm:text-[12px] text-[14px] font-medium text-[#166534] transition hover:bg-[#ecfdf3]"
+                        >
+                          Confirm
+                        </button>
+                      )}
+                  </TableCell>
+                )}
+              </tr>
+            ))
+          )}
         </tbody>
       </table>
     </div>
