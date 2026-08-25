@@ -388,7 +388,7 @@ function Dashboard() {
           {/* Current Balance */}
 
           <div className="rounded-xl border border-[#ccc9cc] bg-white max-sm:p-5 p-7 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
-            <div className="max-sm:mb-4 mb-5 flex items-center justify-between">
+            {/* <div className="max-sm:mb-4 mb-5 flex items-center justify-between">
               <p className="max-sm:text-[14px] text-[16px] font-medium uppercase tracking-wide text-[#58565c]">
                 Current Balance
               </p>
@@ -397,7 +397,7 @@ function Dashboard() {
                 Pending Approval (
                 {expenses.filter((e) => e.status === "PENDING").length})
               </span>
-            </div>
+            </div> */}
 
             {(() => {
               const approvedStatuses = ["APPROVED"];
@@ -429,9 +429,15 @@ function Dashboard() {
 
               return (
                 <>
-                  <p className="max-sm:text-[18px] text-[22px] font-medium text-[#29282b]">
-                    {balanceText}
-                  </p>
+                  <div className="flex flex-row gap-3 items-center justify-between">
+                    <p className="max-sm:text-[18px] text-[22px] font-medium text-[#29282b]">
+                      {balanceText}
+                    </p>
+                    <span className="rounded-sm bg-[#fff0bf] words-break px-3 py-1.5 max-sm:text-[11px] text-[13px] font-semibold text-[#a65300]">
+                      Pending Approval (
+                      {expenses.filter((e) => e.status === "PENDING").length})
+                    </span>
+                  </div>
 
                   {loading ? (
                     <div className="mt-2 flex items-center gap-3">
@@ -463,7 +469,6 @@ function Dashboard() {
                         : "—"}
                     </p>
                   )}
-
                   <p className="mt-1 max-sm:text-[12px] text-[14px] font-medium tracking-wide text-[#5e5b60]">
                     {`Based on ${approvedCount} approved expenses`}
                   </p>
