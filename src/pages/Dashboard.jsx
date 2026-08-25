@@ -350,11 +350,11 @@ function Dashboard() {
           {/* Logo / Title */}
 
           <div>
-            <h1 className="text-[24px] font-bold tracking-tight">
+            <h1 className="max-sm:text-[20px] text-[24px] font-bold tracking-tight">
               Roommate Ledger
             </h1>
 
-            <p className="mt-0.5 text-[14px] text-[#58565c]">
+            <p className="mt-0.5 max-sm:text-[12px] text-[14px] text-[#58565c]">
               Simple expense tracking for Vishal & Shivam
             </p>
           </div>
@@ -390,12 +390,12 @@ function Dashboard() {
           {/* Current Balance */}
 
           <div className="rounded-xl border border-[#ccc9cc] bg-white max-sm:p-5 p-7 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
-            <div className="max-sm:mb-4 mb-5 flex items-start justify-between">
-              <p className="text-[16px] font-medium uppercase tracking-wide text-[#58565c]">
+            <div className="max-sm:mb-4 mb-5 flex items-center justify-between">
+              <p className="max-sm:text-[14px] text-[16px] font-medium uppercase tracking-wide text-[#58565c]">
                 Current Balance
               </p>
 
-              <span className="rounded-sm bg-[#fff0bf] px-3 py-1.5 text-[13px] font-semibold text-[#a65300]">
+              <span className="rounded-sm bg-[#fff0bf] px-3 py-1.5 max-sm:text-[11px] text-[13px] font-semibold text-[#a65300]">
                 Pending Approval (
                 {expenses.filter((e) => e.status === "PENDING").length})
               </span>
@@ -431,17 +431,17 @@ function Dashboard() {
 
               return (
                 <>
-                  <p className="text-[22px] font-medium text-[#29282b]">
+                  <p className="max-sm:text-[18px] text-[22px] font-medium text-[#29282b]">
                     {balanceText}
                   </p>
 
-                  <p className="mt-1 text-[42px] font-bold tracking-tight">
+                  <p className="mt-1 max-sm:text-[34px] text-[42px] font-bold tracking-tight">
                     {profile
                       ? `₹${Math.abs(net).toLocaleString("en-IN")}`
                       : "—"}
                   </p>
 
-                  <p className="mt-1 text-[14px] font-medium tracking-wide text-[#5e5b60]">
+                  <p className="mt-1 max-sm:text-[12px] text-[14px] font-medium tracking-wide text-[#5e5b60]">
                     {`Based on ${approvedCount} approved expenses`}
                   </p>
                 </>
@@ -458,7 +458,7 @@ function Dashboard() {
               <button
                 type="button"
                 onClick={handleNewEntry}
-                className="flex w-full max-sm:w-1/2 items-center justify-center gap-3 rounded-md bg-black px-5 py-4 text-[16px] font-semibold text-white transition hover:bg-[#222]"
+                className="flex w-full max-sm:w-1/2 items-center justify-center gap-3 rounded-md bg-black px-5 py-4 max-sm:text-[14px] text-[16px] font-semibold text-white transition hover:bg-[#222]"
               >
                 <Plus size={21} />
                 New Entry
@@ -470,7 +470,7 @@ function Dashboard() {
                 type="button"
                 onClick={handleMarkClear}
                 disabled={marking}
-                className={`flex w-full max-sm:w-1/2 items-center justify-center gap-3 rounded-md border border-[#c7c4c7] bg-white px-5 py-3.5 text-[16px] font-medium text-[#222] transition ${
+                className={`flex w-full max-sm:w-1/2 items-center justify-center gap-3 rounded-md border border-[#c7c4c7] bg-white px-5 py-3.5 max-sm:text-[14px] text-[16px] font-medium text-[#222] transition ${
                   marking ? "opacity-70" : "hover:bg-[#f5f3f4]"
                 }`}
               >
@@ -513,12 +513,14 @@ function Dashboard() {
           {/* Section Header */}
 
           <div className="flex items-center justify-between gap-4 border-b border-[#d5d2d5] max-sm:px-4 max-sm:py-4 px-7 py-5">
-            <h2 className="text-[23px] font-bold">Expenses</h2>
+            <h2 className="max-sm:text-[19px] text-[23px] font-bold">
+              Expenses
+            </h2>
 
             <select
               value={expenseStatusFilter}
               onChange={(event) => setExpenseStatusFilter(event.target.value)}
-              className="rounded-md border border-[#c9c6c9] bg-white px-3 py-2 text-[14px] font-medium text-[#2c2b2f] outline-none transition focus:border-black"
+              className="rounded-md border border-[#c9c6c9] bg-white px-3 py-2 max-sm:text-[12px] text-[14px] font-medium text-[#2c2b2f] outline-none transition focus:border-black"
               aria-label="Filter expenses by status"
             >
               <option value="ALL">All</option>
@@ -577,7 +579,7 @@ function Dashboard() {
                           />
                         </svg>
 
-                        <span className="text-sm text-[#68656a]">
+                        <span className="max-sm:text-xs text-sm text-[#68656a]">
                           Loading expenses…
                         </span>
                       </div>
@@ -586,7 +588,7 @@ function Dashboard() {
                 ) : filteredExpenses.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="py-12 text-center">
-                      <span className="text-[15px] text-[#68656a]">
+                      <span className="max-sm:text-[13px] text-[15px] text-[#68656a]">
                         No expenses found for this status.
                       </span>
                     </td>
@@ -624,7 +626,7 @@ function Dashboard() {
                               <button
                                 type="button"
                                 onClick={() => handleApprove(expense.id)}
-                                className="rounded-md border border-[#4776ff] px-3 py-1.5 text-[14px] font-medium text-[#3166e8] transition hover:bg-[#eef3ff]"
+                                className="rounded-md border border-[#4776ff] px-3 py-1.5 max-sm:text-[12px] text-[14px] font-medium text-[#3166e8] transition hover:bg-[#eef3ff]"
                               >
                                 Approve
                               </button>
@@ -632,7 +634,7 @@ function Dashboard() {
                               <button
                                 type="button"
                                 onClick={() => handleDeny(expense.id)}
-                                className="rounded-md border border-[#ef4444] px-3 py-1.5 text-[14px] font-medium text-[#b42318] transition hover:bg-[#fff5f5]"
+                                className="rounded-md border border-[#ef4444] px-3 py-1.5 max-sm:text-[12px] text-[14px] font-medium text-[#b42318] transition hover:bg-[#fff5f5]"
                               >
                                 Deny
                               </button>
@@ -653,7 +655,9 @@ function Dashboard() {
 
         <section className="max-sm:mt-5 mt-7 overflow-hidden rounded-xl border border-[#ccc9cc] bg-white">
           <div className="flex items-center justify-between border-b border-[#d5d2d5] px-7 py-5">
-            <h2 className="text-[23px] font-bold">Settlements</h2>
+            <h2 className="max-sm:text-[19px] text-[23px] font-bold">
+              Settlements
+            </h2>
           </div>
 
           <SettlementTable
@@ -687,7 +691,7 @@ function Dashboard() {
 
 function TableHeader({ children }) {
   return (
-    <th className="px-7 py-3 text-left text-[13px] font-semibold uppercase tracking-wide text-[#58565c]">
+    <th className="px-7 py-3 text-left max-sm:text-[11px] text-[13px] font-semibold uppercase tracking-wide text-[#58565c]">
       {children}
     </th>
   );
@@ -698,7 +702,11 @@ function TableHeader({ children }) {
 ========================================================= */
 
 function TableCell({ children }) {
-  return <td className="px-7 py-4 text-[15px] text-[#2c2b2f]">{children}</td>;
+  return (
+    <td className="px-7 py-4 max-sm:text-[13px] text-[15px] text-[#2c2b2f]">
+      {children}
+    </td>
+  );
 }
 
 /* =========================================================
@@ -720,6 +728,7 @@ function StatusBadge({ status }) {
         rounded-sm
         px-3
         py-1.5
+        max-sm:text-[10px]
         text-[12px]
         font-bold
         tracking-wide
@@ -786,7 +795,7 @@ function SettlementTable({ data, type, currentUserId, onConfirmSettlement }) {
                       <button
                         type="button"
                         onClick={() => onConfirmSettlement(item)}
-                        className="rounded-md border border-[#16a34a] px-3 py-1.5 text-[14px] font-medium text-[#166534] transition hover:bg-[#ecfdf3]"
+                        className="rounded-md border border-[#16a34a] px-3 py-1.5 max-sm:text-[12px] text-[14px] font-medium text-[#166534] transition hover:bg-[#ecfdf3]"
                       >
                         Confirm
                       </button>
