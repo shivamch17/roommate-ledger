@@ -1,6 +1,162 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 import { supabase } from "../../lib/supabase";
+import { useAtom } from "jotai";
+import { profileAtom } from "../../atoms/authAtom";
+
+// Brevo API configuration
+const BREVO_API_KEY = import.meta.env.VITE_BREVO_API_KEY;
+const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
+
+// Sender details (configure these in .env or update directly)
+const SENDER_EMAIL =
+  import.meta.env.VITE_BREVO_SENDER_EMAIL || "noreply@example.com";
+const SENDER_NAME = import.meta.env.VITE_BREVO_SENDER_NAME || "Roommate Ledger";
+
+/**
+ * Send approval request email via Brevo
+ */
+async function sendApprovalEmail({
+  recipientEmail,
+  recipientName,
+  payerName,
+  totalAmount,
+  owedAmount,
+  reason,
+}) {
+  if (!BREVO_API_KEY) {
+    console.warn("Brevo API key not configured. Skipping email notification.");
+    return { success: false, error: "API key missing" };
+  }
+
+  const formattedTotal = `₹${totalAmount.toLocaleString("en-IN")}`;
+  const formattedOwed = `₹${owedAmount.toLocaleString("en-IN")}`;
+
+  const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; background-color: #fcf8fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 600px; margin: 0 auto; padding: 20px;">
+    <tr>
+      <td style="background-color: #ffffff; border-radius: 12px; border: 1px solid #ccc9cc; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+
+        <!-- Header -->
+        <h1 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 700; color: #1b1b1d; letter-spacing: -0.5px;">
+          New Expense Added
+        </h1>
+        <p style="margin: 0 0 24px 0; font-size: 14px; color: #58565c;">
+          ${payerName} added an expense that needs your approval
+        </p>
+
+        <!-- Expense Details Card -->
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f7f5f6; border-radius: 8px; margin-bottom: 24px;">
+          <tr>
+            <td style="padding: 20px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td style="padding-bottom: 12px;">
+                    <span style="font-size: 13px; color: #58565c; text-transform: uppercase; letter-spacing: 0.5px;">Description</span>
+                    <br>
+                    <span style="font-size: 16px; font-weight: 600; color: #1b1b1d;">${reason}</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 12px 0; border-top: 1px solid #ddd9dc;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                      <tr>
+                        <td style="font-size: 14px; color: #58565c;">Total Amount</td>
+                        <td style="text-align: right; font-size: 14px; font-weight: 600; color: #1b1b1d;">${formattedTotal}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding-top: 8px; font-size: 14px; color: #58565c;">Your Share</td>
+                        <td style="padding-top: 8px; text-align: right; font-size: 14px; font-weight: 600; color: #1b1b1d;">${formattedOwed}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+
+        <!-- CTA -->
+        <p style="margin: 0 0 16px 0; font-size: 15px; color: #29282b;">
+          Please review and approve this expense in your dashboard.
+        </p>
+
+        <a href="${window.location.origin}" style="display: inline-block; background-color: #000000; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-size: 15px; font-weight: 600;">
+          View Dashboard
+        </a>
+
+        <!-- Footer -->
+        <p style="margin: 32px 0 0 0; font-size: 12px; color: #77747a; text-align: center;">
+          This is an automated message from Roommate Ledger
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+
+  const textContent = `
+New Expense Added
+
+${payerName} added an expense that needs your approval.
+
+Description: ${reason}
+Total Amount: ${formattedTotal}
+Your Share: ${formattedOwed}
+
+Please review and approve this expense at: ${window.location.origin}
+
+— Roommate Ledger
+  `.trim();
+
+  const payload = {
+    sender: {
+      name: SENDER_NAME,
+      email: SENDER_EMAIL,
+    },
+    to: [
+      {
+        email: recipientEmail,
+        name: recipientName || "Roommate",
+      },
+    ],
+    subject: `${payerName} added an expense – Approval needed`,
+    htmlContent,
+    textContent,
+  };
+
+  try {
+    const response = await fetch(BREVO_API_URL, {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "content-type": "application/json",
+        "api-key": BREVO_API_KEY,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error("Brevo API error:", errorData);
+      return { success: false, error: errorData };
+    }
+
+    const result = await response.json();
+    return { success: true, messageId: result.messageId };
+  } catch (error) {
+    console.error("Failed to send email:", error);
+    return { success: false, error: error.message };
+  }
+}
 
 function NewEntryModal({ isOpen, onClose, onSuccess }) {
   const [amount, setAmount] = useState("");
@@ -9,6 +165,7 @@ function NewEntryModal({ isOpen, onClose, onSuccess }) {
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [profile] = useAtom(profileAtom);
 
   const handleNonNegativeCurrencyInput = (value, setter) => {
     if (value === "") {
@@ -83,7 +240,7 @@ function NewEntryModal({ isOpen, onClose, onSuccess }) {
       // Find a roommate/profile other than current user (simple two-person assumption)
       const { data: otherProfiles, error: profErr } = await supabase
         .from("profiles")
-        .select("id")
+        .select("id, name, email")
         .neq("id", user.id)
         .limit(1);
 
@@ -91,7 +248,8 @@ function NewEntryModal({ isOpen, onClose, onSuccess }) {
       if (!otherProfiles || otherProfiles.length === 0)
         throw new Error("No roommate profile found");
 
-      const roommateId = otherProfiles[0].id;
+      const roommate = otherProfiles[0];
+      const roommateId = roommate.id;
 
       const payload = {
         created_by: user.id,
@@ -107,6 +265,24 @@ function NewEntryModal({ isOpen, onClose, onSuccess }) {
         .from("expenses")
         .insert([payload]);
       if (insertErr) throw insertErr;
+
+      // Send approval email notification (non-blocking)
+      if (roommate.email) {
+        sendApprovalEmail({
+          recipientEmail: roommate.email,
+          recipientName: roommate.name,
+          payerName: profile?.name || "Your roommate",
+          totalAmount,
+          owedAmount: roommateOwed,
+          reason: reason.trim(),
+        }).then((result) => {
+          if (result.success) {
+            console.log("Approval email sent:", result.messageId);
+          }
+        });
+      } else {
+        console.warn("Roommate has no email address. Skipping notification.");
+      }
 
       // Reset form
       setAmount("");
